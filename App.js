@@ -25,7 +25,7 @@ export default function App() {
       flex: 1,
       padding: 30,
       paddingTop: 100,
-      backgroundColor: "#fff",
+      backgroundColor: "#ffffffff",
     },
     heading: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
     inputRow: { flexDirection: "row", marginBottom: 10 },
@@ -37,8 +37,23 @@ export default function App() {
       padding: 8,
       borderRadius: 5,
     },
-    taskItem: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-    taskText: { fontSize: 16 },
+    taskItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+      padding: 12,
+      backgroundColor: "#ffffff", // white card
+      borderRadius: 8,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2, // for Android shadow
+    },
+    taskText: {
+      flex: 1,
+      fontSize: 16,
+    },
     taskDone: { textDecorationLine: "line-through", color: "gray" },
     empty: { textAlign: "center", marginTop: 20, fontSize: 16, color: "gray" },
     modalContainer: {
@@ -60,6 +75,13 @@ export default function App() {
       borderRadius: 5,
       backgroundColor: "#fff",
       fontSize: 16,
+    },
+    taskListContainer: {
+      flex: 1,
+      marginTop: 20,
+      padding: 10,
+      backgroundColor: "#f5f5f5", // light gray background
+      borderRadius: 10,
     },
   });
 
@@ -105,12 +127,16 @@ export default function App() {
   const deleteTask = async (id) => {
     if (Platform.OS === "web") {
       setTasks((prev) => prev.filter((task) => task.id !== id));
+      setModalVisible(false);
+      setCurrentTask(null); // reset currentTask
       return;
     }
 
     if (!db) return;
     await db.runAsync("DELETE FROM tasks WHERE id = ?", [id]);
     fetchTasks();
+    setModalVisible(false);
+    setCurrentTask(null); // reset currentTask
   };
 
   const updateTask = async (id, title) => {
@@ -156,7 +182,7 @@ export default function App() {
     return (
       <View style={styles.taskItem}>
         <TouchableOpacity
-          onPress={() => toggleTask(item.id, item.done)}
+          onPress={() => openEditModal(item)}
           style={{ flex: 1 }}
         >
           <Text style={[styles.taskText, item.done ? styles.taskDone : null]}>
@@ -164,32 +190,40 @@ export default function App() {
           </Text>
         </TouchableOpacity>
 
-        <Button title="Update" onPress={() => openEditModal(item)} />
-        <Button title="Delete" onPress={() => deleteTask(item.id)} />
+        {/* <Button title="Update" onPress={() => openEditModal(item)} /> */}
+        {/* <Button title="Delete" onPress={() => deleteTask(item.id)} /> */}
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Offline Task Manager</Text>
+      {/* <Text style={styles.heading}>Offline Task Manager</Text> */}
 
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
-          placeholder="Enter task"
+          placeholder="Въведи услуга..."
           value={title}
           onChangeText={setTitle}
         />
-        <Button title="Add" onPress={addTask} />
+        <Button
+          title="Добави"
+          onPress={addTask}
+          disabled={title.trim().length === 0} // disable if empty or just spaces
+        />
       </View>
 
-      <FlatList
-        data={tasks}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.empty}>No tasks yet</Text>}
-      />
+      <View style={styles.taskListContainer}>
+        <FlatList
+          data={tasks}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          ListEmptyComponent={
+            <Text style={styles.empty}>Все още няма услуги...</Text>
+          }
+        />
+      </View>
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalContainer}>
@@ -215,11 +249,17 @@ export default function App() {
               }}
             >
               <Button
-                title="Update"
+                title="Промени"
                 onPress={() => updateTask(currentTask.id, newTitle)}
               />
               <Button
-                title="Cancel"
+                title="Изтрий"
+                onPress={
+                  () => deleteTask(currentTask.id) // wait until deletion finishes
+                }
+              />
+              <Button
+                title="Отказ"
                 onPress={() => setModalVisible(false)}
                 color="red"
               />
