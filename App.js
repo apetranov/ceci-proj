@@ -24,6 +24,7 @@ export default function App() {
   const [newTime, setNewTime] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const styles = StyleSheet.create({
     container: {
@@ -280,6 +281,7 @@ export default function App() {
               Редактирай услуга
             </Text>
 
+            {/* Title input */}
             <TextInput
               style={styles.modalInput}
               value={newTitle}
@@ -287,12 +289,36 @@ export default function App() {
               autoFocus={true}
             />
 
-            <TextInput
+            {/* TIME PICKER SECTION */}
+            <TouchableOpacity
               style={styles.modalInput}
-              value={newTime}
-              onChangeText={setNewTime}
-              placeholder="Въведи час..."
-            />
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Text>{newTime ? newTime : "Избери час..."}</Text>
+            </TouchableOpacity>
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={new Date()}
+                mode="time"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={(event, selectedTime) => {
+                  setShowTimePicker(false);
+                  if (selectedTime) {
+                    const hours = selectedTime
+                      .getHours()
+                      .toString()
+                      .padStart(2, "0");
+                    const minutes = selectedTime
+                      .getMinutes()
+                      .toString()
+                      .padStart(2, "0");
+                    setNewTime(`${hours}:${minutes}`);
+                  }
+                }}
+              />
+            )}
+            {/* END TIME PICKER SECTION */}
 
             <View
               style={{
@@ -307,9 +333,7 @@ export default function App() {
               />
               <Button
                 title="Изтрий"
-                onPress={
-                  () => deleteTask(currentTask.id) // wait until deletion finishes
-                }
+                onPress={() => deleteTask(currentTask.id)}
               />
               <Button
                 title="Отказ"
