@@ -19,6 +19,7 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
   const [newTitle, setNewTitle] = useState("");
+  // const [time, setTime] = useState("");
 
   const styles = StyleSheet.create({
     container: {
@@ -231,7 +232,7 @@ export default function App() {
             <Text
               style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}
             >
-              Edit Task
+              Редактирай услуга
             </Text>
 
             <TextInput
