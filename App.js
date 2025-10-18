@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import * as SQLite from "expo-sqlite";
 import { Platform } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function App() {
   const [db, setDb] = useState(null);
@@ -19,7 +20,10 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
   const [newTitle, setNewTitle] = useState("");
-  // const [time, setTime] = useState("");
+  const [time, setTime] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const [selectedTime, setSelectedTime] = useState(new Date());
 
   const styles = StyleSheet.create({
     container: {
@@ -96,9 +100,12 @@ export default function App() {
         CREATE TABLE IF NOT EXISTS tasks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT,
+          time TEXT,
           done INT
         )
       `);
+
+      // await database.execAsync("ALTER TABLE tasks ADD COLUMN time TEXT");
       fetchTasks(database);
     };
     initDb();
@@ -112,16 +119,21 @@ export default function App() {
 
   const addTask = async () => {
     if (Platform.OS === "web") {
-      setTasks([...tasks, { id: Date.now(), title, done: 0 }]);
+      setTasks([...tasks, { id: Date.now(), title, time, done: 0 }]);
       setTitle("");
+      setTime("");
       return;
     }
-    if (!db || title.trim().length === 0) return;
-    await db.runAsync("INSERT INTO tasks (title, done) VALUES (?, ?)", [
-      title,
-      0,
-    ]);
+
+    if (!db || title.trim().length === 0 || time.trim().length === 0) return;
+
+    await db.runAsync(
+      "INSERT INTO tasks (title, time, done) VALUES (?, ?, ?)",
+      [title, time, 0]
+    );
+
     setTitle("");
+    setTime("");
     fetchTasks();
   };
 
@@ -140,17 +152,21 @@ export default function App() {
     setCurrentTask(null); // reset currentTask
   };
 
-  const updateTask = async (id, title) => {
+  const updateTask = async (id, title, time) => {
     if (Platform.OS === "web") {
       setTasks((prev) =>
-        prev.map((task) => (task.id === id ? { ...task, title } : task))
+        prev.map((task) => (task.id === id ? { ...task, title, time } : task))
       );
       setModalVisible(false);
       return;
     }
 
     if (!db) return;
-    await db.runAsync("UPDATE tasks SET title = ? WHERE id = ?", [title, id]);
+    await db.runAsync("UPDATE tasks SET title = ?, time = ? WHERE id = ?", [
+      title,
+      time,
+      id,
+    ]);
     fetchTasks();
     setModalVisible(false);
   };
@@ -176,26 +192,19 @@ export default function App() {
   const openEditModal = (task) => {
     setCurrentTask(task);
     setNewTitle(task.title);
+    setNewTime(task.time);
     setModalVisible(true);
   };
 
-  const renderItem = ({ item }) => {
-    return (
-      <View style={styles.taskItem}>
-        <TouchableOpacity
-          onPress={() => openEditModal(item)}
-          style={{ flex: 1 }}
-        >
-          <Text style={[styles.taskText, item.done ? styles.taskDone : null]}>
-            {item.title}
-          </Text>
-        </TouchableOpacity>
-
-        {/* <Button title="Update" onPress={() => openEditModal(item)} /> */}
-        {/* <Button title="Delete" onPress={() => deleteTask(item.id)} /> */}
-      </View>
-    );
-  };
+  const renderItem = ({ item }) => (
+    <View style={styles.taskItem}>
+      <TouchableOpacity onPress={() => openEditModal(item)} style={{ flex: 1 }}>
+        <Text style={[styles.taskText, item.done ? styles.taskDone : null]}>
+          {item.title} — {item.time}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -208,10 +217,46 @@ export default function App() {
           value={title}
           onChangeText={setTitle}
         />
+      </View>
+
+      <View style={{ marginTop: 10 }}>
+        <TouchableOpacity
+          onPress={() => setShowPicker(true)}
+          style={{
+            borderWidth: 1,
+            borderColor: "#ccc",
+            padding: 10,
+            borderRadius: 5,
+            backgroundColor: "#fff",
+            marginBottom: 10,
+          }}
+        >
+          <Text style={{ fontSize: 16 }}>
+            {time ? `Час: ${time}` : "Избери час..."}
+          </Text>
+        </TouchableOpacity>
+
+        {showPicker && (
+          <DateTimePicker
+            value={selectedTime}
+            mode="time"
+            is24Hour={true}
+            display="default"
+            onChange={(event, date) => {
+              setShowPicker(false);
+              if (date) {
+                const formatted = date.toTimeString().slice(0, 5); // "HH:MM"
+                setSelectedTime(date);
+                setTime(formatted);
+              }
+            }}
+          />
+        )}
+
         <Button
           title="Добави"
           onPress={addTask}
-          disabled={title.trim().length === 0} // disable if empty or just spaces
+          disabled={title.trim().length === 0 || time.trim().length === 0}
         />
       </View>
 
@@ -242,6 +287,13 @@ export default function App() {
               autoFocus={true}
             />
 
+            <TextInput
+              style={styles.modalInput}
+              value={newTime}
+              onChangeText={setNewTime}
+              placeholder="Въведи час..."
+            />
+
             <View
               style={{
                 flexDirection: "row",
@@ -251,7 +303,7 @@ export default function App() {
             >
               <Button
                 title="Промени"
-                onPress={() => updateTask(currentTask.id, newTitle)}
+                onPress={() => updateTask(currentTask.id, newTitle, newTime)}
               />
               <Button
                 title="Изтрий"
