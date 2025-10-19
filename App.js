@@ -115,12 +115,26 @@ export default function App() {
   const fetchTasks = async (database = db) => {
     if (!database) return;
     const rows = await database.getAllSync("SELECT * FROM tasks");
-    setTasks(rows);
+
+    // Sort tasks by time (HH:MM)
+    const sorted = rows.sort((a, b) => {
+      const [aH, aM] = a.time.split(":").map(Number);
+      const [bH, bM] = b.time.split(":").map(Number);
+      return aH * 60 + aM - (bH * 60 + bM);
+    });
+
+    setTasks(sorted);
   };
 
   const addTask = async () => {
     if (Platform.OS === "web") {
-      setTasks([...tasks, { id: Date.now(), title, time, done: 0 }]);
+      const updatedTasks = [...tasks, { id: Date.now(), title, time, done: 0 }];
+      updatedTasks.sort((a, b) => {
+        const [aH, aM] = a.time.split(":").map(Number);
+        const [bH, bM] = b.time.split(":").map(Number);
+        return aH * 60 + aM - (bH * 60 + bM);
+      });
+      setTasks(updatedTasks);
       setTitle("");
       setTime("");
       return;
@@ -155,9 +169,17 @@ export default function App() {
 
   const updateTask = async (id, title, time) => {
     if (Platform.OS === "web") {
-      setTasks((prev) =>
-        prev.map((task) => (task.id === id ? { ...task, title, time } : task))
+      const updated = tasks.map((task) =>
+        task.id === id ? { ...task, title, time } : task
       );
+
+      updated.sort((a, b) => {
+        const [aH, aM] = a.time.split(":").map(Number);
+        const [bH, bM] = b.time.split(":").map(Number);
+        return aH * 60 + aM - (bH * 60 + bM);
+      });
+
+      setTasks(updated);
       setModalVisible(false);
       return;
     }
